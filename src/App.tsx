@@ -773,20 +773,24 @@ export default function App() {
                 ? `${photoBaseUrl}${item.profile_pic}`
                 : `${photoBaseUrl}default.jpg`;
 
-              const languages = [];
-              if (item.english_language > 0) languages.push('English');
-              if (item.french_language > 0) languages.push('French');
+             const languages = item.bs_languages
+                ? item.bs_languages.map((l: any) => `${l.language_name} (${l.language_expertise})`)
+                : [];
+              if (languages.length === 0) {
+                if (item.english_language > 0) languages.push('English');
+                if (item.french_language > 0) languages.push('French');
+              }
 
               return {
                 id: item.user_id,
                 key: `external-${item.user_id}`,
                 name: item.name || item.first_name || 'Babysitter',
                 lastName: item.user_last_name || '',
-                age: calculateAgeFromDOB(item.user_dob),
+                age: item.age || calculateAgeFromDOB(item.user_dob),
                 languages,
                 // keep raw numeric years for some existing logic but persist months from API
-                experience: item.babysitter_profiles_experience || 0,
-                experienceMonths: item.total_experience_months || item.total_experience || 0,
+                experience: item.experienceMonths || 0,
+                experienceMonths: item.experienceMonths || 0,
                 description: item.babysitter_profiles_about || '',
                 fullBio: item.babysitter_profiles_personal || '',
                 photo,
