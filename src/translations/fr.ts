@@ -187,8 +187,8 @@ export const fr = {
     confirmSelection: {
       title: "Confirmer la demande",
       subtitle: "Êtes-vous sûr de vouloir confirmer ce devis et être mis en relation avec des babysitters ?",
-      hireTitle: "Confirmer ma demande",
-      hireSubtitle: "Je souhaite confirmer ma demande de garde d'enfants\nJ'accepte les termes et conditions de Bloom Buddies",
+      hireTitle: "Confirmer le choix final",
+      hireSubtitle: "Êtes-vous sûr ? Cette décision est irréversible.",
       confirm: "Confirmer",
       cancel: "Annuler",
     },

@@ -91,7 +91,7 @@ interface AdminDashboardProps {
     onLogout: () => void;
 }
 
-type AdminPage = 'dashboard' | 'new-requests' | 'completed-requests' | 'ongoing-requests' | 'requests' | 'active-requests' | 'signed-contracts' | 'interviews' | 'invoices' | 'contracts' | 'attestations' | 'users';
+type AdminPage = 'dashboard' | 'new-requests' | 'completed-requests' | 'ongoing-requests' | 'requests' | 'active-requests' | 'pending-signature' | 'signed-contracts' | 'interviews' | 'invoices' | 'contracts' | 'attestations' | 'users';
 
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
@@ -110,6 +110,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         // { id: 'requests', label: 'All Requests', icon: ClipboardList },
         { id: 'new-requests', label: 'Pending Requests', icon: ClipboardList },
         { id: 'active-requests', label: 'Requests in Matching', icon: Activity },
+        { id: 'pending-signature', label: 'Pending Signature & Payment', icon: CreditCard },
         { id: 'ongoing-requests', label: 'Ongoing Requests', icon: Clock },
         { id: 'completed-requests', label: 'Completed Request', icon: CheckCircle2 },
         { id: 'signed-contracts', label: 'Signed Contract', icon: ShieldCheck },
@@ -273,6 +274,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             {activePage === 'ongoing-requests' && <OngoingRequestsView searchQuery={searchQuery} onSearchChange={setSearchQuery} onViewInvoices={(userId) => { setSelectedUserIdForInvoices(userId); setActivePage('invoices'); }} />}
                             {activePage === 'requests' && <RequestsView searchQuery={searchQuery} onSearchChange={setSearchQuery} />}
                             {activePage === 'active-requests' && <ActiveRequestsView searchQuery={searchQuery} onSearchChange={setSearchQuery} />}
+                            {activePage === 'pending-signature' && <PendingSignatureView searchQuery={searchQuery} onSearchChange={setSearchQuery} />}
                             {activePage === 'signed-contracts' && <SignedContractsView searchQuery={searchQuery} onSearchChange={setSearchQuery} onViewInvoices={(userId) => { setSelectedUserIdForInvoices(userId); setActivePage('invoices'); }} />}
                             {activePage === 'interviews' && <InterviewsView searchQuery={searchQuery} onSearchChange={setSearchQuery} />}
                             {activePage === 'invoices' && <InvoicesView searchQuery={searchQuery} onSearchChange={setSearchQuery} userId={selectedUserIdForInvoices} onClearUserFilter={() => setSelectedUserIdForInvoices(null)} />}
@@ -1523,6 +1525,110 @@ const ActiveRequestChoicesCell: React.FC<{
     );
 };
 
+const PendingSignatureView = ({ searchQuery, onSearchChange }: { searchQuery: string; onSearchChange: (val: string) => void }) => {
+    const [requests, setRequests] = useState<import('../services/api').ParentRequest[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    const fetchData = async () => {
+        setIsLoading(true); setError(null);
+        try {
+            const result = await api.getPendingSignatureRequests();
+            setRequests(result); setCurrentPage(1);
+        } catch {
+            setError('Failed to load. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    React.useEffect(() => { fetchData(); }, []);
+
+    const filtered = requests.filter(req => {
+        const name = `${req.user?.first_name} ${req.user?.last_name}`.toLowerCase();
+        const q = searchQuery.toLowerCase();
+        return name.includes(q) || req.id.toString().includes(q) || req.parent_address?.toLowerCase().includes(q);
+    });
+    const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const copyContractLink = (choiceId: number) => {
+        navigator.clipboard.writeText(`${window.location.origin}/contract/${choiceId}`);
+        toast.success('Contract link copied!');
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h3 className="text-lg font-bold text-slate-900">Pending Signature &amp; Payment</h3>
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input type="text" placeholder="Filter requests..." value={searchQuery}
+                            onChange={(e) => { onSearchChange(e.target.value); setCurrentPage(1); }}
+                            className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none w-64 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all shadow-sm" />
+                    </div>
+                    <button onClick={fetchData} className="p-2 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 transition-colors shadow-sm" title="Refresh">
+                        <History size={18} />
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto min-h-[400px]">
+                    <table className="w-full text-left min-w-[800px]">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-200">
+                                <th className="px-4 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest w-[8%]">ID</th>
+                                <th className="px-4 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest w-[30%]">Family</th>
+                                <th className="px-4 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest w-[28%]">Chosen Babysitter</th>
+                                <th className="px-4 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest w-[16%]">Status</th>
+                                <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-widest w-[18%]">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                            {isLoading && (<tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400"><div className="flex items-center justify-center gap-3"><Loader2 className="animate-spin" size={20} /><span className="text-sm font-medium">Loading…</span></div></td></tr>)}
+                            {!isLoading && error && (<tr><td colSpan={5} className="px-6 py-12 text-center text-red-500"><div className="flex items-center justify-center gap-2"><AlertCircle size={18} /><span className="text-sm font-medium">{error}</span></div></td></tr>)}
+                            {!isLoading && !error && filtered.length === 0 && (<tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">No requests pending signature.</td></tr>)}
+                            {!isLoading && !error && paginated.map(req => {
+                                const finalChoice = (req.choices ?? []).find((c: any) => Number(c.final_choice) === 1);
+                                return (
+                                    <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-4 py-4 font-bold text-slate-900 align-top">#{req.id}</td>
+                                        <td className="px-4 py-4 align-top">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-slate-800">{req.user?.first_name} {req.user?.last_name}</span>
+                                                <span className="text-xs text-slate-400">{req.user?.email}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4 align-top">
+                                            {finalChoice ? (
+                                                <span className="font-semibold text-slate-700 text-sm">{(finalChoice as any).babysitter_first_name} {(finalChoice as any).babysitter_last_name}</span>
+                                            ) : <span className="text-slate-400 text-xs">—</span>}
+                                        </td>
+                                        <td className="px-4 py-4 align-top">
+                                            <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-100">Awaiting signature</span>
+                                        </td>
+                                        <td className="px-4 py-4 text-right align-top">
+                                            {finalChoice && (
+                                                <button onClick={() => copyContractLink((finalChoice as any).id)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand-accent/10 text-brand-accent text-xs font-bold rounded-xl hover:bg-brand-accent hover:text-white transition-all">
+                                                    <LinkIcon size={14} /> Copy contract link
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+                <Pagination totalItems={filtered.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
+            </div>
+        </div>
+    );
+};
+
 const ActiveRequestsView = ({ searchQuery, onSearchChange }: { searchQuery: string; onSearchChange: (val: string) => void }) => {
     const [requests, setRequests] = useState<import('../services/api').ParentRequest[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -1799,6 +1905,7 @@ const ActiveRequestsView = ({ searchQuery, onSearchChange }: { searchQuery: stri
                     <MatchPicksModal
                         request={viewingPicks}
                         onClose={() => setViewingPicks(null)}
+                        onUpdated={fetchActiveRequests}
                     />
                 )}
             </AnimatePresence>

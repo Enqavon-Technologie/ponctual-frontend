@@ -185,8 +185,8 @@ export const en = {
     confirmSelection: {
       title: "Confirm Request",
       subtitle: "Are you sure you want to confirm this price quote and be matched with babysitters?",
-      hireTitle: "Confirm my request",
-      hireSubtitle: "I wish to confirm my childcare request\nI accept the terms and conditions of Bloom Buddies",
+      hireTitle: "Confirm Final Choice",
+      hireSubtitle: "Are you sure? This decision cannot be undone.",
       confirm: "Confirm",
       cancel: "Cancel",
     },

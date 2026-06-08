@@ -444,6 +444,12 @@ export const api = {
     return Array.isArray(response.data) ? response.data : [];
   },
 
+  // Admin: requests where a final babysitter was chosen, awaiting contract signature & payment.
+  getPendingSignatureRequests: async (): Promise<ParentRequest[]> => {
+    const response = await apiClient.get("/pending-signature-requests");
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
   // Admin: propose 3-5 babysitter candidates to a family (emails the parent a pick link).
   proposeCandidates: async (data: {
     parent_request_id: number;
