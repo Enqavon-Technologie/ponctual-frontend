@@ -53,6 +53,7 @@ import { ProfilePage } from './components/ProfilePage';
 import { LoginScreen } from './components/LoginScreen';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ContractView } from './components/ContractView';
+import { MatchSelectionView } from './components/MatchSelectionView';
 import { Toaster } from 'react-hot-toast';
 
 
@@ -301,7 +302,7 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState(() => {
     return typeof window !== 'undefined' && window.location.pathname.match(/\/price\/\d+/) ? 3 : 1;
   });
-  const [view, setView] = useState<'booking' | 'profile' | 'login' | 'admin-dashboard' | 'contract'>(() => {
+  const [view, setView] = useState<'booking' | 'profile' | 'login' | 'admin-dashboard' | 'contract' | 'match'>(() => {
     return typeof window !== 'undefined' && window.location.pathname.match(/\/price\/\d+/) ? 'booking' : 'booking';
   });
   const [formData, setFormData] = useState<FormData>({
@@ -334,6 +335,7 @@ export default function App() {
   const [isModifying, setIsModifying] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [selectedChoiceId, setSelectedChoiceId] = useState<number | null>(null);
+  const [matchRequestId, setMatchRequestId] = useState<number | null>(null);
   const [autoShowCongrats, setAutoShowCongrats] = useState(false);
 
   // Step 4 State (Babysitter Matching)
@@ -443,7 +445,7 @@ export default function App() {
           if (response.status && response.data) {
             setIsLoggedIn(true);
             setUser(response.data);
-            if (!initialPath.includes('/contract/') && !initialPath.includes('/price/') && !initialPath.includes('/cmg/')) {
+            if (!initialPath.includes('/contract/') && !initialPath.includes('/price/') && !initialPath.includes('/cmg/') && !initialPath.includes('/match/')) {
               // Properly route to admin or parent based on user data
               if (response.data.email?.toLowerCase() === 'ponctuel@bloom-buddies.fr' || response.data.user_role === 1) {
                 setView('admin-dashboard');
@@ -519,6 +521,13 @@ export default function App() {
         const id = parseInt(contractMatch[1]);
         setSelectedChoiceId(id);
         setView('contract');
+      }
+
+      // Parent candidate-selection link: /match/:requestId
+      const matchMatch = path.match(/\/match\/(\d+)/);
+      if (matchMatch) {
+        setMatchRequestId(parseInt(matchMatch[1]));
+        setView('match');
       }
     };
     handleUrlRoute();
@@ -1728,6 +1737,19 @@ export default function App() {
                   setView('profile');
                 }}
                 onRefuse={() => setView('profile')}
+              />
+            </motion.div>
+          ) : view === 'match' ? (
+            <motion.div
+              key="match"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full"
+            >
+              <MatchSelectionView
+                requestId={matchRequestId || 0}
+                onDone={() => { window.location.href = '/'; }}
               />
             </motion.div>
           ) : (

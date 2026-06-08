@@ -461,6 +461,27 @@ export const api = {
     return response.data;
   },
 
+  // Parent: fetch the candidates proposed for a request (reached via emailed link / dashboard).
+  getProposedCandidates: async (
+    requestId: number,
+  ): Promise<{ status: boolean; request?: any; candidates?: any[]; message?: string }> => {
+    const response = await apiClient.get(`/match-candidates/${requestId}`);
+    return response.data;
+  },
+
+  // Parent: submit which proposed candidates they want, with optional interview scheduling.
+  selectCandidates: async (data: {
+    parent_request_id: number;
+    selections: Array<{
+      choice_order: number;
+      interview_date?: string | null;
+      interview_time?: string | null;
+    }>;
+  }): Promise<{ status: boolean; message: string }> => {
+    const response = await apiClient.post("/select-candidates", data);
+    return response.data;
+  },
+
   updateBabysitterChoice: async (
     choiceId: number,
     data: BabysitterChoicePayload,
