@@ -450,6 +450,33 @@ export const api = {
     return Array.isArray(response.data) ? response.data : [];
   },
 
+  // Family has signed; awaiting the babysitter's signature.
+  getPendingBabysitterSignatureRequests: async (): Promise<ParentRequest[]> => {
+    const response = await apiClient.get("/pending-babysitter-signature-requests");
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  // Mark the babysitter's contract as generated for a given choice.
+  generateBabysitterContract: async (choiceId: number): Promise<any> => {
+    const response = await apiClient.post(`/generate-babysitter-contract/${choiceId}`);
+    return response.data;
+  },
+
+  // Babysitter contract: fetch the auto-generated contract data (public).
+  getBabysitterContract: async (choiceId: number): Promise<any> => {
+    const response = await apiClient.get(`/babysitter-contract/${choiceId}`);
+    return response.data;
+  },
+
+  // Babysitter contract: record the babysitter's signature (public).
+  signBabysitterContract: async (
+    choiceId: number,
+    data: { dob: string; ssn?: string; signature_name: string },
+  ): Promise<any> => {
+    const response = await apiClient.post(`/babysitter-contract/${choiceId}/sign`, data);
+    return response.data;
+  },
+
   // Admin: propose 3-5 babysitter candidates to a family (emails the parent a pick link).
   proposeCandidates: async (data: {
     parent_request_id: number;

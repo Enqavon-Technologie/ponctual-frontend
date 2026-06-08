@@ -5,11 +5,13 @@ import './index.css';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { InterviewRoom } from './components/InterviewRoom';
+import { BabysitterContractView } from './components/BabysitterContractView';
 
-// Standalone video-interview room: /interview/:channel is opened by the family
-// and the babysitter (no account needed), so it renders on its own — outside the
-// main app shell, header and routing.
+// Standalone routes opened via emailed links (no account, outside the app shell):
+//  - /interview/:channel       → the video-interview room
+//  - /babysitter-contract/:id  → the babysitter's contract signing page
 const interviewMatch = window.location.pathname.match(/^\/interview\/([^/]+)/);
+const babysitterContractMatch = window.location.pathname.match(/^\/babysitter-contract\/(\d+)/);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -17,7 +19,9 @@ createRoot(document.getElementById('root')!).render(
       <LanguageProvider>
         {interviewMatch
           ? <InterviewRoom channel={decodeURIComponent(interviewMatch[1])} />
-          : <App />}
+          : babysitterContractMatch
+            ? <BabysitterContractView choiceId={parseInt(babysitterContractMatch[1], 10)} />
+            : <App />}
       </LanguageProvider>
     </ErrorBoundary>
   </StrictMode>,
