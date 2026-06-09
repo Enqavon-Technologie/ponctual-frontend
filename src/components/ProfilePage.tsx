@@ -443,11 +443,27 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             {activeTab === 'requests' && (
               <div className="space-y-6">
                 {user?.parent_requests && user.parent_requests.length > 0 ? (
-                  user.parent_requests.map((req) => (
+                  user.parent_requests.map((req) => {
+                    // Stage of the request, mirroring the admin back-office flow:
+                    // awaiting (quote accepted, no candidates yet) → proposed
+                    // (pick candidates) → final-choice (pick the one) → contract
+                    // (view + sign) → completed (contract signed).
+                    const reqChoices: any[] = (req.choices as any[]) || [];
+                    const hasProposed = reqChoices.some((c) => c.status === 'proposed');
+                    const hasSelected = reqChoices.some((c) => c.status === 'selected');
+                    const finalChoice = reqChoices.find((c) => Number(c.final_choice) === 1);
+                    const contract = Array.isArray((req as any).contract) ? (req as any).contract[0] : (req as any).contract;
+                    const contractSigned = !!contract && Number(contract.status) === 1;
+                    const stage: 'awaiting' | 'proposed' | 'final-choice' | 'contract' | 'completed' =
+                      finalChoice ? (contractSigned ? 'completed' : 'contract')
+                        : hasSelected ? 'final-choice'
+                          : hasProposed ? 'proposed'
+                            : 'awaiting';
+                    return (
                     <div key={req.id} className="group bg-white rounded-[32px] sm:rounded-[40px] p-5 sm:p-8 border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 relative">
                       <div className="space-y-10">
                         {/* Compact Header */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
+                        <div className="flex flex-row items-center justify-between gap-3 pb-2">
                           <div className="flex items-center gap-3 sm:gap-4">
                             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-slate-50 rounded-[16px] sm:rounded-[20px] flex items-center justify-center text-slate-400 group-hover:bg-brand-accent group-hover:text-white transition-all duration-500 shadow-sm">
                               <Baby size={24} className="sm:w-7 sm:h-7" />
@@ -472,21 +488,47 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                           </div>
 
                           <div className="flex items-center gap-2 sm:gap-3">
-                            <button
-                              onClick={() => onModifyRequest(req)}
-                              className="flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 bg-slate-900 text-white text-[10px] sm:text-xs font-bold rounded-xl sm:rounded-2xl hover:bg-brand-accent transition-all shadow-lg shadow-slate-900/10 hover:shadow-brand-accent/20 flex items-center justify-center gap-2"
-                            >
-                              {t.common.modify} <ChevronRight size={14} className="sm:w-4 sm:h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleRemoveRequest(req.id.toString())}
-                              className="p-2.5 bg-slate-50 sm:bg-transparent text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl sm:rounded-2xl transition-all"
-                              title="Remove Request"
-                            >
-                              <Trash2 size={18} className="sm:w-5 sm:h-5" />
-                            </button>
+                            {/* Request can only be cancelled before our team starts matching. */}
+                            {stage === 'awaiting' && (
+                              <button
+                                onClick={() => handleRemoveRequest(req.id.toString())}
+                                className="p-2.5 bg-slate-50 sm:bg-transparent text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl sm:rounded-2xl transition-all"
+                                title="Remove Request"
+                              >
+                                <Trash2 size={18} className="sm:w-5 sm:h-5" />
+                              </button>
+                            )}
                           </div>
                         </div>
+
+                        {/* Stage banner — mirrors the admin back-office flow */}
+                        {stage === 'awaiting' && (
+                          <div className="p-5 sm:p-6 rounded-[24px] bg-amber-50 border border-amber-100 flex items-start gap-3">
+                            <Clock className="text-amber-500 shrink-0 mt-0.5" size={20} />
+                            <div className="min-w-0">
+                              <p className="font-display font-bold text-slate-800">{language === 'fr' ? 'En attente de propositions' : 'Awaiting candidates'}</p>
+                              <p className="text-sm text-slate-500 leading-snug">{language === 'fr' ? 'Notre équipe sélectionne des babysitters pour vous. Vous serez notifié(e) dès qu’elles seront proposées.' : 'Our team is selecting babysitters for you. You’ll be notified as soon as candidates are proposed.'}</p>
+                            </div>
+                          </div>
+                        )}
+                        {stage === 'contract' && (
+                          <div className="p-5 sm:p-6 rounded-[24px] bg-brand-accent/5 border border-brand-accent/15 flex items-start gap-3">
+                            <FileText className="text-brand-accent shrink-0 mt-0.5" size={20} />
+                            <div className="min-w-0">
+                              <p className="font-display font-bold text-slate-800">{language === 'fr' ? 'Votre contrat est prêt' : 'Your contract is ready'}</p>
+                              <p className="text-sm text-slate-500 leading-snug">{language === 'fr' ? 'Consultez et signez votre contrat ci-dessous pour finaliser votre garde.' : 'Review and sign your contract below to finalise your booking.'}</p>
+                            </div>
+                          </div>
+                        )}
+                        {stage === 'completed' && (
+                          <div className="p-5 sm:p-6 rounded-[24px] bg-emerald-50 border border-emerald-100 flex items-start gap-3">
+                            <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
+                            <div className="min-w-0">
+                              <p className="font-display font-bold text-slate-800">{language === 'fr' ? 'Demande complétée' : 'Request completed'}</p>
+                              <p className="text-sm text-slate-500 leading-snug">{language === 'fr' ? 'Contrat signé — votre babysitter est confirmée.' : 'Contract signed — your babysitter is confirmed.'}</p>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Main Stats Grid */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 p-5 sm:p-8 bg-slate-50/50 rounded-[28px] sm:rounded-[32px] border border-slate-100/50">
@@ -736,7 +778,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                         )}
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-32 bg-white rounded-[48px] border-2 border-dashed border-slate-100">
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200">
@@ -1077,7 +1120,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <div className="flex items-center gap-4">
           <button
             onClick={() => window.open('https://wa.me/33780857676', '_blank')}
-            className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-brand-blue shadow-sm hover:bg-brand-blue hover:text-white transition-colors"
+            className="w-12 h-12 shrink-0 bg-white rounded-2xl flex items-center justify-center text-brand-blue shadow-sm hover:bg-brand-blue hover:text-white transition-colors"
             aria-label="Open WhatsApp support"
             title="WhatsApp Support"
           >

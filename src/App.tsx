@@ -331,6 +331,7 @@ export default function App() {
     return typeof window !== 'undefined' && window.location.pathname.match(/\/price\/\d+/) ? true : false;
   });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [parentRequestId, setParentRequestId] = useState<number | null>(null);
   const [isModifying, setIsModifying] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -894,12 +895,23 @@ export default function App() {
     setParentRequestId(null);
     setIsModifying(false);
     setHourlyRate(27.99); // Reset to default
+
+    // Pre-fill everything we already know about the logged-in parent: name,
+    // phone, email, address and their children's birth dates (from their most
+    // recent request).
+    const latestRequest = user?.parent_requests?.length
+      ? [...user.parent_requests].sort((a, b) => b.id - a.id)[0]
+      : null;
+    const knownDOBs = (latestRequest?.children ?? user?.children ?? [])
+      .map((c: any) => c.child_dob)
+      .filter(Boolean);
+
     setFormData({
       firstName: user?.first_name || '',
       lastName: user?.last_name || '',
-      address: '',
-      numChildren: 1,
-      childDOBs: [''],
+      address: user?.user_address || '',
+      numChildren: knownDOBs.length || 1,
+      childDOBs: knownDOBs.length ? knownDOBs : [''],
       countryCode: '+1',
       telephone: user?.user_phone || '',
       email: user?.email || '',
@@ -967,7 +979,9 @@ export default function App() {
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.address.trim()) {
       newErrors.address = 'Address is required';
-    } else if (!formData.lat || !formData.lng) {
+    } else if ((!formData.lat || !formData.lng) && formData.address !== user?.user_address) {
+      // A pre-filled account address (unchanged) is already trusted; only a
+      // newly-typed address must be picked from the autocomplete suggestions.
       newErrors.address = 'Please select a valid address from the suggestions';
     }
     if (!formData.telephone.trim()) {
@@ -1128,6 +1142,10 @@ export default function App() {
             if (response.data.token) {
               api.setToken(response.data.token);
               setIsLoggedIn(true);
+              // New booking registrants are parents — persist the role so a
+              // refresh (e.g. after accepting the quote) restores the dashboard
+              // even if getUser is briefly unavailable.
+              try { localStorage.setItem('auth_role', 'parent'); } catch (e) { /* ignore */ }
             }
 
             const requestId =
@@ -1174,8 +1192,34 @@ export default function App() {
           } else {
             setErrors({ email: response.message || 'Registration failed' });
           }
-        } catch (error) {
-          setErrors({ email: 'Network error. Please try again.' });
+        } catch (error: any) {
+          // axios rejects on any non-2xx, so conflict/validation responses land
+          // here (not in the success branch above) — handle them properly.
+          const status = error?.response?.status;
+          const resData = error?.response?.data;
+          if (status === 409) {
+            setView('login');
+            setErrors({ email: resData?.message || 'Email already registered. Please login.' });
+          } else if (status === 422 && resData?.errors) {
+            const apiErrors: FormErrors = {};
+            Object.entries(resData.errors).forEach(([key, messages]: [string, any]) => {
+              let formKey = key;
+              if (key === 'first_name') formKey = 'firstName';
+              if (key === 'last_name') formKey = 'lastName';
+              if (key === 'user_phone') formKey = 'telephone';
+              if (key === 'user_address') formKey = 'address';
+              if (key.startsWith('children.')) {
+                const parts = key.split('.');
+                if (parts.length >= 2) formKey = `childDOB_${parts[1]}`;
+              }
+              apiErrors[formKey] = Array.isArray(messages) ? messages[0] : String(messages);
+            });
+            setErrors(apiErrors);
+          } else if (resData?.message) {
+            setErrors({ email: resData.message });
+          } else {
+            setErrors({ email: 'Network error. Please try again.' });
+          }
         } finally {
           setIsRegistering(false);
         }
@@ -1614,18 +1658,18 @@ export default function App() {
 
             <div
               className="flex items-center gap-3 cursor-pointer group"
-              onClick={() => setView('booking')}
+              onClick={() => setView(isLoggedIn ? 'profile' : 'booking')}
             >
               <img
                 src="https://ponctuel.bloom-buddies.fr/logo-png.png"
                 alt="Logo"
-                className="h-20 w-auto object-contain group-hover:scale-110 transition-transform"
+                className="h-12 sm:h-20 w-auto object-contain group-hover:scale-110 transition-transform"
               />
             </div>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 sm:gap-6">
               {/* Language Switcher */}
-              <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                 <button
                   onClick={() => setLanguage('en')}
                   className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${language === 'en' ? 'bg-white text-brand-accent shadow-sm' : 'text-slate-400 hover:text-slate-600'
@@ -1642,40 +1686,72 @@ export default function App() {
                 </button>
               </div>
 
-              {isLoggedIn && (
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-500 transition-all group"
-                  title="Logout"
-                >
-                  <div className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center group-hover:border-red-500 group-hover:bg-red-50 transition-all">
-                    <LogOut size={14} />
-                  </div>
-                  <span className="hidden md:inline text-[10px] font-bold uppercase tracking-[0.2em]">Logout</span>
-                </button>
-              )}
+              {isLoggedIn ? (
+                /* Authenticated: a single account menu consolidates dashboard,
+                   new request and logout — keeps the header tidy. */
+                <div className="relative">
+                  <button
+                    onClick={() => setAccountMenuOpen(o => !o)}
+                    className="flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-2xl bg-white border border-slate-200 hover:border-brand-accent transition-all"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-brand-accent/10 text-brand-accent flex items-center justify-center shrink-0">
+                      <UserIcon size={16} />
+                    </div>
+                    <span className="hidden md:inline font-bold text-sm text-slate-700 max-w-[120px] truncate">
+                      {user?.first_name || t.profilePage.title}
+                    </span>
+                    <ChevronDown size={16} className={`text-slate-400 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
 
-              {view !== 'profile' && (
-                <button
-                  onClick={() => {
-                    if (view === 'profile' || view === 'login') {
-                      setView('booking');
-                    } else {
-                      setView(isLoggedIn ? 'profile' : 'login');
-                    }
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-bold text-sm transition-all ${view === 'profile' || view === 'login'
-                    ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:border-brand-accent hover:text-brand-accent'
-                    }`}
-                >
-                  <UserIcon size={18} />
-                  <span className="hidden md:inline">
-                    {view === 'profile' || view === 'login'
-                      ? t.common.newrequestbtn || 'Booking'
-                      : (isLoggedIn ? t.profilePage.title : t.login.title)}
-                  </span>
-                </button>
+                  {accountMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setAccountMenuOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-50">
+                        <div className="px-3 py-2 mb-1 border-b border-slate-100">
+                          <p className="text-sm font-bold text-slate-800 truncate">{user?.first_name} {user?.last_name}</p>
+                          {user?.email && <p className="text-[11px] text-slate-400 truncate">{user.email}</p>}
+                        </div>
+                        <button
+                          onClick={() => { setAccountMenuOpen(false); setView('profile'); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-left text-sm font-semibold text-slate-700 transition-colors"
+                        >
+                          <CalendarDays size={16} className="text-brand-accent" />
+                          {language === 'fr' ? 'Mon tableau de bord' : 'My dashboard'}
+                        </button>
+                        <button
+                          onClick={() => { setAccountMenuOpen(false); handleCreateNewRequest(); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-left text-sm font-semibold text-slate-700 transition-colors"
+                        >
+                          <Plus size={16} className="text-brand-accent" />
+                          {language === 'fr' ? 'Nouvelle demande' : 'New request'}
+                        </button>
+                        <div className="my-1 border-t border-slate-100" />
+                        <button
+                          onClick={() => { setAccountMenuOpen(false); handleLogout(); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 text-left text-sm font-semibold text-red-500 transition-colors"
+                        >
+                          <LogOut size={16} />
+                          {language === 'fr' ? 'Déconnexion' : 'Logout'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                view !== 'profile' && (
+                  <button
+                    onClick={() => setView(view === 'login' ? 'booking' : 'login')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-bold text-sm transition-all ${view === 'login'
+                      ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:border-brand-accent hover:text-brand-accent'
+                      }`}
+                  >
+                    <UserIcon size={18} />
+                    <span className="hidden md:inline">
+                      {view === 'login' ? (t.common.newrequestbtn || 'Booking') : t.login.title}
+                    </span>
+                  </button>
+                )
               )}
             </div>
           </div>
@@ -1855,7 +1931,7 @@ export default function App() {
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                             <MapPin size={16} className="text-brand-accent" />
-                            {t.step1.address}
+                            {t.step1.address} <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -2427,11 +2503,11 @@ export default function App() {
                                 <span className="font-bold text-emerald-500">{formatCurrency(estimatedTaxCredit)}</span>
                               </div>
 
-                              <div className="pt-8 mt-2 border-t-2 border-dashed border-slate-100 flex justify-between items-center">
+                              <div className="pt-8 mt-2 border-t-2 border-dashed border-slate-100 flex justify-between items-center gap-3">
                                 <div>
-                                  <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">{t.step2.finalCost}</span>
+                                  <span className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">{t.step2.finalCost}</span>
                                 </div>
-                                <span className="text-3xl md:text-4xl font-display font-bold text-brand-accent">{formatCurrency(finalCostAfterAid)}</span>
+                                <span className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-brand-accent whitespace-nowrap shrink-0">{formatCurrency(finalCostAfterAid)}</span>
                               </div>
                             </div>
                           </div>
