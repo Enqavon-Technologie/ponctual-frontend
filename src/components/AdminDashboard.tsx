@@ -149,9 +149,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                                 <motion.span
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    className="text-xl font-bold tracking-tight whitespace-nowrap"
+                                    className="text-lg font-bold tracking-tight leading-tight"
                                 >
-                                    AdminPanel
+                                    Punctual Babysitting
                                 </motion.span>
                             )}
                         </div>

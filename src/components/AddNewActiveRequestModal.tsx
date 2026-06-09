@@ -344,7 +344,8 @@ export const AddNewActiveRequestModal: React.FC<AddNewActiveRequestModalProps> =
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Phone Number</label>
                 <PhoneInput
-                    country={'de'}
+                    country={'fr'}
+                    preferredCountries={['fr', 'be', 'ch', 'lu']}
                     value={formData.user_phone}
                     onChange={(phone) => handleChange('user_phone', phone)}
                     containerClass="!w-full"
@@ -353,12 +354,13 @@ export const AddNewActiveRequestModal: React.FC<AddNewActiveRequestModalProps> =
                 />
               </div>
               <div className="space-y-1.5 lg:col-span-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Parent Address</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Parent Address <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <MapPin size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     ref={parentAddressRef}
                     type="text"
+                    required
                     placeholder="Enter full address"
                     value={formData.parent_address}
                     onChange={(e) => handleChange('parent_address', e.target.value)}
@@ -427,6 +429,7 @@ export const AddNewActiveRequestModal: React.FC<AddNewActiveRequestModalProps> =
                       <input
                         type="date"
                         value={child.child_dob}
+                        max={new Date().toISOString().split('T')[0]}
                         onChange={(e) => handleChildDOBChange(idx, e.target.value)}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/10 outline-none transition-all text-xs font-medium"
                       />

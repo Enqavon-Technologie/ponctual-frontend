@@ -981,9 +981,12 @@ export default function App() {
       newErrors.email = 'Email is invalid';
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
     formData.childDOBs.forEach((dob, index) => {
       if (!dob.trim()) {
         newErrors[`childDOB_${index}`] = 'DOB is required';
+      } else if (dob > todayStr) {
+        newErrors[`childDOB_${index}`] = language === 'fr' ? 'La date ne peut pas être dans le futur' : 'Date cannot be in the future';
       }
     });
 
@@ -1915,6 +1918,7 @@ export default function App() {
                                   <input
                                     type="date"
                                     value={dob}
+                                    max={new Date().toISOString().split('T')[0]}
                                     onChange={(e) => handleDOBChange(index, e.target.value)}
                                     className={`w-full px-3 py-2 rounded-lg border bg-white transition-all focus:outline-none focus:ring-2 focus:ring-brand-accent/20 ${errors[`childDOB_${index}`] ? 'border-red-400 ring-1 ring-red-100' : 'border-slate-200 focus:border-brand-accent'
                                       }`}

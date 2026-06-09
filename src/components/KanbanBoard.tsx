@@ -1041,6 +1041,7 @@ const NewRequestModal = ({
                   <input
                     type="date"
                     value={child.child_dob}
+                    max={new Date().toISOString().split('T')[0]}
                     onChange={(e) => handleChildDOBChange(idx, e.target.value)}
                     className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all text-sm font-medium"
                   />
