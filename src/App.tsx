@@ -56,6 +56,15 @@ import { ContractView } from './components/ContractView';
 import { MatchSelectionView } from './components/MatchSelectionView';
 import { Toaster } from 'react-hot-toast';
 
+// Phone numbers stored on the account may lack the leading "+" (e.g.
+// "33768913177"). The PhoneInput normalizes typed values to "+digits", but
+// auto-populated values bypass that, so isValidPhoneNumber() rejects them even
+// though they're correct. Normalize the same way wherever we prefill the phone.
+const normalizePhone = (raw?: string | null): string => {
+  const s = (raw ?? '').trim();
+  if (!s) return '';
+  return s.startsWith('+') ? s : `+${s.replace(/[^\d]/g, '')}`;
+};
 
 interface TimeSlot {
   id: string;
@@ -486,7 +495,7 @@ export default function App() {
             firstName: response.data?.first_name || '',
             lastName: response.data?.last_name || '',
             email: response.data?.email || '',
-            telephone: response.data?.user_phone || '',
+            telephone: normalizePhone(response.data?.user_phone),
             address: response.data?.user_address || '',
             numChildren: response.data?.children?.length || 1,
             childDOBs: response.data?.children?.map(c => c.child_dob) || ['']
@@ -586,7 +595,7 @@ export default function App() {
       address: data.parent_address,
       numChildren: data.children?.length || 1,
       childDOBs: data.children?.map(c => c.child_dob) || [''],
-      telephone: data.user?.user_phone || user?.user_phone || '',
+      telephone: normalizePhone(data.user?.user_phone || user?.user_phone),
       countryCode: '+1',
     });
 
@@ -793,7 +802,7 @@ export default function App() {
             firstName: userData.first_name || '',
             lastName: userData.last_name || '',
             email: userData.email || '',
-            telephone: userData.user_phone || '',
+            telephone: normalizePhone(userData.user_phone),
             address: userData.user_address || '',
           }));
         }
@@ -940,7 +949,7 @@ export default function App() {
       numChildren: knownDOBs.length || 1,
       childDOBs: knownDOBs.length ? knownDOBs : [''],
       countryCode: '+1',
-      telephone: user?.user_phone || '',
+      telephone: normalizePhone(user?.user_phone),
       email: user?.email || '',
     });
     setDateSchedule([]);
@@ -977,7 +986,7 @@ export default function App() {
       firstName: userData.first_name || '',
       lastName: userData.last_name || '',
       email: userData.email || '',
-      telephone: userData.user_phone || '',
+      telephone: normalizePhone(userData.user_phone),
       address: userData.user_address || '',
     }));
   }, []);

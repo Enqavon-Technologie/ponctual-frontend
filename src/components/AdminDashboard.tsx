@@ -4545,7 +4545,7 @@ const EditUserModal = ({ user, onClose, onUpdate }: { user: User; onClose: () =>
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="relative w-full max-w-xl bg-white rounded-[32px] shadow-2xl overflow-hidden"
+                className="relative w-full max-w-3xl bg-white rounded-[32px] shadow-2xl overflow-hidden"
             >
                 <form onSubmit={handleSubmit}>
                     <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -4563,8 +4563,8 @@ const EditUserModal = ({ user, onClose, onUpdate }: { user: User; onClose: () =>
                         </button>
                     </div>
 
-                    <div className="p-8 space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
+                    <div className="p-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">First Name</label>
                                 <input
@@ -4585,7 +4585,6 @@ const EditUserModal = ({ user, onClose, onUpdate }: { user: User; onClose: () =>
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all text-sm font-bold"
                                 />
                             </div>
-                        </div>
 
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Phone Number</label>
@@ -4663,6 +4662,7 @@ const EditUserModal = ({ user, onClose, onUpdate }: { user: User; onClose: () =>
                                     Français
                                 </button>
                             </div>
+                        </div>
                         </div>
                     </div>
 

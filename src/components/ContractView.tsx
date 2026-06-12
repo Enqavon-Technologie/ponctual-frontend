@@ -820,7 +820,7 @@ const ContractViewInner: React.FC<ContractViewProps> = ({ userName, onBack, onAc
                                             <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex justify-between items-center">
                                                 <div>
                                                     <p className="text-xs text-slate-500 font-medium pb-1">{language === 'fr' ? 'Montant du 1er mois' : 'First month amount'}</p>
-                                                    <p className="text-sm font-bold text-slate-800 capitalize">{Object.keys(contractData.format2)[0]}</p>
+                                                    <p className="text-sm font-bold text-slate-800 capitalize">{formatMonthString(Object.keys(contractData.format2)[0])}</p>
                                                 </div>
                                                 <div className="text-xl font-display font-bold text-brand-blue">
                                                     {formatCurrency(getFirstMonthAmount())}
