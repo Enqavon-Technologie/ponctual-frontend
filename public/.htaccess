@@ -1,0 +1,28 @@
+# SPA deep-link fallback for the Ponctuel / Bloom Buddies frontend.
+#
+# The app is a single-page React build served from the domain root
+# (https://ponctuel.bloom-buddies.fr/). Client-side routes are resolved in
+# JavaScript, so a direct hit on a deep link — exactly what the emailed links
+# do — must be served index.html instead of 404'ing:
+#   /price/:id, /contract/:id, /match/:id, /cmg/:id,
+#   /babysitter-contract/:id, /interview/:channel
+#
+# Vite copies everything in public/ to the build root, so this ships as
+# dist/.htaccess automatically. (Harmless on non-Apache servers — see the
+# README for the nginx equivalent.)
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Leave the Laravel backend (served from /backend) completely untouched.
+  RewriteRule ^backend/ - [L]
+
+  # Serve real files and directories (assets, fonts, images, …) as-is.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else is a client-side route → hand it to the SPA.
+  RewriteRule ^ index.html [L]
+</IfModule>
