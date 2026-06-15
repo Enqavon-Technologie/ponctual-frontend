@@ -489,17 +489,24 @@ export default function App() {
           const role = (response.data.email?.toLowerCase() === 'ponctuel@bloom-buddies.fr' || response.data.user_role === 1) ? 'admin' : 'parent';
           localStorage.setItem('auth_role', role);
           routeForRole(role);
-          // Pre-fill form data if user is logged in
-          setFormData(prev => ({
-            ...prev,
-            firstName: response.data?.first_name || '',
-            lastName: response.data?.last_name || '',
-            email: response.data?.email || '',
-            telephone: normalizePhone(response.data?.user_phone),
-            address: response.data?.user_address || '',
-            numChildren: response.data?.children?.length || 1,
-            childDOBs: response.data?.children?.map(c => c.child_dob) || ['']
-          }));
+          // Pre-fill form data from the logged-in account — but ONLY for a fresh
+          // booking. On a deep link (/price, /contract, /match, /cmg) the loaded
+          // request owns the form; the viewer may be an admin (with no children)
+          // previewing someone else's quote, and clobbering childDOBs/numChildren
+          // here zeroes out the CMG age brackets. mapRequestToState already fills
+          // these from the request's own account.
+          if (!isDeepLink) {
+            setFormData(prev => ({
+              ...prev,
+              firstName: response.data?.first_name || '',
+              lastName: response.data?.last_name || '',
+              email: response.data?.email || '',
+              telephone: normalizePhone(response.data?.user_phone),
+              address: response.data?.user_address || '',
+              numChildren: response.data?.children?.length || 1,
+              childDOBs: response.data?.children?.map(c => c.child_dob) || ['']
+            }));
+          }
         }
         // We deliberately do NOT log the user out on a 401/failure. As long as a
         // token is stored we keep the session and let the user log out explicitly.
